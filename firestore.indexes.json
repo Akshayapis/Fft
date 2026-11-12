@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    { "collectionGroup": "registrations", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "tournamentId", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" } ] },
+    { "collectionGroup": "notifications", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "userId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "transactions", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "userId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "registrations", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "userId", "order": "ASCENDING" }, { "fieldPath": "joinedAt", "order": "DESCENDING" } ] }
+  ],
+  "fieldOverrides": []
+}
