@@ -1,0 +1,90 @@
+rules_version = '2';
+
+// Nexus Arena — defense in depth.
+// The web app never writes financial data directly: every mutation goes through
+// Cloud Functions (Admin SDK), which bypass these rules but performs its own
+// authorization, validation and atomic transactions. Client-side reads are
+// limited to the player's own non-financial data plus public content.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function owns(userId) { return signedIn() && request.auth.uid == userId; }
+    function isNotBanned() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+
+    match /users/{userId} {
+      allow read: if owns(userId) || isAdmin();
+      allow write: if false;                       // server-only
+    }
+    match /profiles/{userId} {
+      allow read: if owns(userId) || isAdmin();
+      allow write: if false;
+    }
+    match /wallets/{userId} {
+      allow read: if owns(userId) || isAdmin();
+      allow write: if false;                       // balances are NEVER client-writable
+    }
+    match /transactions/{txnId} {
+      allow read: if owns(resource.data.userId) || isAdmin();
+      allow write: if false;                       // append-only ledger, server-side
+    }
+    match /deposits/{id} {
+      allow read: if owns(resource.data.userId) || isAdmin();
+      allow write: if false;
+    }
+    match /withdrawals/{id} {
+      allow read: if owns(resource.data.userId) || isAdmin();
+      allow write: if false;
+    }
+    match /registrations/{id} {
+      allow read: if owns(resource.data.userId) || isAdmin();
+      allow write: if false;
+    }
+    match /results/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    // Credentials live only in the trusted API response. No direct client read.
+    match /tournaments/{id} {
+      allow read: if isNotBanned();
+      allow write: if false;
+    }
+    // Private match credentials: never readable directly, even by participants.
+    // The trusted API releases them only to registered players of that match.
+    match /rooms/{id} {
+      allow read, write: if false;
+    }
+    match /notifications/{id} {
+      allow read: if owns(resource.data.userId);  // enables real-time onSnapshot listener
+      allow write: if false;
+    }
+    match /tickets/{id} {
+      allow read: if owns(resource.data.userId) || isAdmin();
+      allow write: if false;
+    }
+    match /ticketMessages/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    match /banners/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /announcements/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /adminLogs/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    // Everything else (tokens, outbox, deletion requests, audit internals) is private.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

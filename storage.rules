@@ -1,0 +1,31 @@
+rules_version = '2';
+// User uploads are scoped to the signed-in user's own path and size/type limited.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function isImage() { return request.resource.contentType.matches('image/(png|jpeg|webp|gif)'); }
+    function smallEnough() { return request.resource.size < 3 * 1024 * 1024; }
+
+    match /users/{uid}/avatars/{file} {
+      allow read: if true;
+      allow write: if isOwner(uid) && isImage() && smallEnough();
+    }
+    match /users/{uid}/deposits/{file} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) && isImage() && smallEnough();
+    }
+    match /users/{uid}/support/{file} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) && isImage() && smallEnough();
+    }
+    match /banners/{file} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && smallEnough();
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
